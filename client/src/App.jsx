@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Navbar from './components/Navbar';
+import Gallery from './components/Gallery';
 
 
 function App() {
@@ -24,6 +25,10 @@ function App() {
             <Route
               path="/login"
               element={!user ? <Login /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/gallery/x"
+              element={user ? <Gallery /> : <Navigate to="/" />}
             />
             <Route
               path="/signup"
