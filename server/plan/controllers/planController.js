@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { get } = require('mongoose');
+const Plan = require('../models/planModel');
 
 const createPlan = async (req, res) => {
     try {
@@ -20,7 +21,31 @@ const createPlan = async (req, res) => {
             const { lat, lng } = result.geometry.location;
             console.log(`Latitude: ${lat}, Longitude: ${lng}`);
 
+            const hotelOptions = {
+                method: 'GET',
+                url: 'https://booking-com.p.rapidapi.com/v1/hotels/search-by-coordinates',
+                params: {
+                  adults_number: peopleCount,
+                  checkin_date: from,
+                  locale: 'en-gb',
+                  room_number: '1',
+                  units: 'metric',
+                  filter_by_currency: 'USD',
+                  longitude: lng,
+                  checkout_date: to,
+                  latitude: lat,
+                  order_by: 'popularity',
+                  include_adjacency: 'true',
+                  page_number: '0'
+                },
+                headers: {
+                  'x-rapidapi-key': '511cc779a3mshbeefe33875606d2p19c9bejsn334922384c38',
+                  'x-rapidapi-host': 'booking-com.p.rapidapi.com'
+                }
+              };
+
             const hotelResponse = await getHotelsInArea(lat, lng);
+            //const hotelResponse = await axios.request(hotelOptions);
 
             const restaurantResponse = await getRestaurantsInArea(lat, lng);
 
@@ -46,7 +71,7 @@ const createPlan = async (req, res) => {
             // console.log(options);
 
             // const hotelResponse = await axios.request(options);
-            res.status(200).json({attractions: attractionsResponse, hotels: hotelResponse, restaurants: restaurantResponse});
+            res.status(200).json({hotels: hotelResponse, attractions: attractionsResponse, restaurants: restaurantResponse});
         } else {
             console.log('Location not found');
             res.status(404).json({ message: 'Location not found' });
@@ -133,6 +158,29 @@ const getNearbyAttractions = async (latitude, longitude, radius = 15000) => {
     }
 };
 
+const selectPlan = async (req, res) => {
+    try {
+        const uid = req.userId
+        const { place, from, to, preferences, peopleCount, attractions, hotels, restaurants } = req.body;
+        const plan = new Plan({
+            place,
+            from,
+            to,
+            preferences,
+            peopleCount,
+            attractions,
+            hotels: [hotels],
+            restaurants,
+            uid
+        });
+        await plan.save();
+        res.status(201).json({ message: 'Plan created successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
 module.exports = {
-    createPlan
+    createPlan,
+    selectPlan
 }

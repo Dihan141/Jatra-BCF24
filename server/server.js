@@ -9,6 +9,7 @@ const app = express();
 const authroutes = require('./user/routers/authRoutes');
 const productroutes = require('./product/routers/productRoutes');
 const planRoutes = require('./plan/routers/planRoutes');
+const blogRoutes = require('./blog/routes/blogRoutes');
 
 app.use(cors({
     origin: '*'
