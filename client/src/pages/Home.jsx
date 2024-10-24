@@ -38,8 +38,23 @@ const Home = () => {
   const [startLocation, setStartLocation] = useState('');
   const [travelMode, setTravelMode] = useState('TRANSIT');
 
+
+  const [hotels, setHotels] = useState([]);
+  const [attractions, setAttractions] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+
+  const [selectedHotel, setSelectedHotel] = useState(null);
+  const [selectedRestaurants, setSelectedRestaurants] = useState([]);
+  const [selectedAttractions, setSelectedAttractions] = useState([]);
+
+  const [currentHotelIndex, setCurrentHotelIndex] = useState(0);
+  const [currentAttractionIndex, setCurrentAttractionIndex] = useState(0);
+  const [currentRestaurantIndex, setCurrentRestaurantIndex] = useState(0);
+
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const totalSteps = organizedDirections.length;
+
 
   const handleNextStep = () => {
     if (currentStepIndex < totalSteps - 1) {
@@ -58,6 +73,17 @@ const Home = () => {
     setTravelMode(mode);
   };
 
+  const handleHotelSelect = (hotel) => {
+    setSelectedHotel(hotel);
+  };
+
+  const handleRestaurantSelect = (restaurant) => {
+    setSelectedRestaurants((prevSelected) =>
+      prevSelected.includes(restaurant)
+        ? prevSelected.filter((r) => r !== restaurant)
+        : [...prevSelected, restaurant]
+    );
+  };
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -192,10 +218,33 @@ const Home = () => {
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Plan Response:', data);
-          setResponseData(data);
+          // Set state for hotels, attractions, and restaurants separately
+          setHotels(data.hotels.map(place => ({
+            name: place.name,
+            photos: place.photos,
+            vicinity: place.vicinity,
+            rating: place.rating,
+          })));
+
+          setAttractions(data.attractions.map(place => ({
+            name: place.name,
+            photos: place.photos,
+            vicinity: place.vicinity,
+            rating: place.rating,
+          })));
+
+          setRestaurants(data.restaurants.map(place => ({
+            name: place.name,
+            photos: place.photos,
+            vicinity: place.vicinity,
+            rating: place.rating,
+          })));
+
+          console.log('Hotels:', hotels);
+          console.log('Attractions:', attractions);
+          console.log('Reactaurants:', restaurants);
         } else {
-          console.error('Failed to fetch:', response.statusText);
+          console.error('Failed to fetch Plan:', response.statusText);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -273,7 +322,7 @@ const Home = () => {
               type="date"
               value={startDate}
               onChange={handleStartDateChange}
-              min={getCurrentDate()}  
+              min={getCurrentDate()}
               required
             />
           </div>
@@ -284,7 +333,7 @@ const Home = () => {
               type="date"
               value={endDate}
               onChange={handleEndDateChange}
-              min={startDate || getCurrentDate()} 
+              min={startDate || getCurrentDate()}
               required
             />
           </div>
@@ -344,7 +393,7 @@ const Home = () => {
           <button onClick={handleNextStep} disabled={currentStepIndex === organizedDirections.length - 1}>Next</button>
         </div>
       )}
-
+      
 
       <div className="map-section">
         <h2> Map</h2>
@@ -372,6 +421,8 @@ const Home = () => {
           </GoogleMap>
         </LoadScript>
       </div>
+
+
 
       {Object.entries(weatherData).length > 0 && (
         <div className="weather-section">
