@@ -100,9 +100,17 @@ const Home = () => {
     });
 
     if(response.ok){
-      // const data = await response.json();
-      // console.log('Plan Response:', data);
+      const data = await response.json();
+      console.log('Plan Response:', data);
       console.log('Plan created successfully');
+      const blogResponse = await fetch(`${backendUrl}/api/blog/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan: data.plan }),
+      });
+      console.log('Blog Response:', blogResponse);
     } else {
       console.error('Failed to fetch:', response.statusText);
     }

@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const schema = mongoose.Schema;
 
 const planSchema = schema({
+    title: {
+        type: String,
+    },
     place: {
         type: String,
         required: true

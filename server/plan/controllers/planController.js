@@ -1,5 +1,4 @@
 const axios = require('axios');
-const { get } = require('mongoose');
 const Plan = require('../models/planModel');
 
 const createPlan = async (req, res) => {
@@ -163,6 +162,7 @@ const selectPlan = async (req, res) => {
         const uid = req.userId
         const { place, from, to, preferences, peopleCount, attractions, hotels, restaurants } = req.body;
         const plan = new Plan({
+            title: generateTripTitle(place),
             place,
             from,
             to,
@@ -174,13 +174,41 @@ const selectPlan = async (req, res) => {
             uid
         });
         await plan.save();
-        res.status(201).json({ message: 'Plan created successfully' });
+        res.status(201).json({ message: 'Plan created successfully', plan });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 }
 
+const getAllPlans = async (req, res) => {
+    try {
+        const plans = await Plan.find();
+        res.status(200).json({ plans });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
+const generateTripTitle = (place) => {
+    const templates = [
+      `Trip to ${place}`,
+      `${place} Travel`,
+      `Explore ${place}`,
+      `${place} Adventure`,
+      `Discover ${place}`,
+      `Visit ${place}`,
+      `A Journey to ${place}`,
+      `Experience ${place}`,
+      `${place} Vacation`,
+      `A Getaway to ${place}`,
+    ];
+  
+    // Shuffle the array to randomize output
+    return templates[Math.floor(Math.random() * templates.length)];
+};
+
 module.exports = {
     createPlan,
-    selectPlan
+    selectPlan,
+    getAllPlans,
 }
