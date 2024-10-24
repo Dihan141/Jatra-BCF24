@@ -1,3 +1,7 @@
+rag/.env
+rag/.venv
+rag/__pycache__
+
 # Logs
 logs
 *.log
