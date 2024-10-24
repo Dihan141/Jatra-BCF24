@@ -50,12 +50,14 @@ const Home = () => {
     try {
       const response = await axios.get(geocodingAPI);
       const location = response.data.results[0].geometry.location;
+      console.log(location);
       return location;  // return the lat and lng
     } catch (error) {
       console.error('Error fetching geocode:', error);
       return null;
     }
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
