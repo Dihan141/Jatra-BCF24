@@ -3,6 +3,7 @@ import { GoogleMap, LoadScript, Marker, DirectionsService, DirectionsRenderer } 
 import axios from 'axios';
 import './css/Home.css';
 import parse from 'html-react-parser';
+import {useAuthContext} from '../hooks/useAuthContext';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const OPEN_WEATHER_API_KEY = import.meta.env.VITE_OPEN_WEATHER_API_KEY;
@@ -20,6 +21,7 @@ const defaultCenter = {
 
 
 const Home = () => {
+  const {user} = useAuthContext();
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -37,20 +39,82 @@ const Home = () => {
   const [organizedDirections, setOrganizedDirections] = useState([]);
   const [startLocation, setStartLocation] = useState('');
   const [travelMode, setTravelMode] = useState('TRANSIT');
-  const [places, setPlaces] = useState([]);
+  const [planData, setPlanData] = useState(null);
+  const [showAllHotels, setShowAllHotels] = useState(false);
+  const [showAllRestaurants, setShowAllRestaurants] = useState(false);
+  const [showAllAttractions, setShowAllAttractions] = useState(false);
 
+  const toggleHotels = () => setShowAllHotels(!showAllHotels);
+  const toggleRestaurants = () => setShowAllRestaurants(!showAllRestaurants);
+  const toggleAttractions = () => setShowAllAttractions(!showAllAttractions);
 
-  const [hotels, setHotels] = useState([]);
-  const [attractions, setAttractions] = useState([]);
-  const [restaurants, setRestaurants] = useState([]);
-
-  const [selectedHotel, setSelectedHotel] = useState(null);
+  //hotel, restaurant, attraction selections
+  const [selectedHotel, setSelectedHotel] = useState('');
   const [selectedRestaurants, setSelectedRestaurants] = useState([]);
   const [selectedAttractions, setSelectedAttractions] = useState([]);
 
-  const [currentHotelIndex, setCurrentHotelIndex] = useState(0);
-  const [currentAttractionIndex, setCurrentAttractionIndex] = useState(0);
-  const [currentRestaurantIndex, setCurrentRestaurantIndex] = useState(0);
+  const MAX_VISIBLE_ITEMS = 3;
+
+  const handleHotelChange = (event) => {
+    setSelectedHotel(event.target.value);
+  };
+
+  const handleRestaurantChange = (event) => {
+    const value = event.target.value;
+    setSelectedRestaurants((prevRestaurants) =>
+      prevRestaurants.includes(value)
+        ? prevRestaurants.filter((restaurant) => restaurant !== value)
+        : [...prevRestaurants, value]
+    );
+  };
+
+  const handleAttractionChange = (event) => {
+    const value = event.target.value;
+    setSelectedAttractions((prevAttractions) =>
+      prevAttractions.includes(value)
+        ? prevAttractions.filter((attraction) => attraction !== value)
+        : [...prevAttractions, value]
+    );
+  };
+
+  const handleSubmitSelection = async() => {
+    const selectedData = {
+      place: destination,
+      from: startDate,
+      to: endDate,
+      preferences: budgetCategory,
+      peopleCount: numTravelers,
+      attractions: selectedAttractions,
+      hotels: selectedHotel,
+      restaurants: selectedRestaurants,
+    };
+    console.log('Selected Data:', selectedData);
+
+    const response = await fetch(`${backendUrl}/api/plan/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${user.token}`,
+      },
+      body: JSON.stringify(selectedData),
+    });
+
+    if(response.ok){
+      // const data = await response.json();
+      // console.log('Plan Response:', data);
+      console.log('Plan created successfully');
+    } else {
+      console.error('Failed to fetch:', response.statusText);
+    }
+
+    // Add API call or processing logic here to submit selected data
+    // Example: post to backend
+    // fetch(`${backendUrl}/api/submit-selection`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify(selectedData)
+    // });
+  };
 
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -209,63 +273,20 @@ const Home = () => {
       };
 
       try {
+        console.log('User:', user.token);
         const response = await fetch(`${backendUrl}/api/plan/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`,
           },
           body: JSON.stringify(postData),
         });
 
         if (response.ok) {
           const data = await response.json();
-
-          setPlaces({
-            attractions: data.attractions.map(place => ({
-              name: place.name,
-              photos: place.photos,
-              vicinity: place.vicinity,
-              rating: place.rating,
-            })),
-            hotels: data.hotels.map(place => ({
-              name: place.name,
-              photos: place.photos,
-              vicinity: place.vicinity,
-              rating: place.rating,
-            })),
-            restaurants: data.restaurants.map(place => ({
-              name: place.name,
-              photos: place.photos,
-              vicinity: place.vicinity,
-              rating: place.rating,
-            })),
-          });
-          // Set state for hotels, attractions, and restaurants separately
-          setHotels(data.hotels.map(place => ({
-            name: place.name,
-            photos: place.photos,
-            vicinity: place.vicinity,
-            rating: place.rating,
-          })));
-
-          setAttractions(data.attractions.map(place => ({
-            name: place.name,
-            photos: place.photos,
-            vicinity: place.vicinity,
-            rating: place.rating,
-          })));
-
-          setRestaurants(data.restaurants.map(place => ({
-            name: place.name,
-            photos: place.photos,
-            vicinity: place.vicinity,
-            rating: place.rating,
-          })));
-
-          console.log('Places: ', places);
-          console.log('Hotels:', hotels);
-          console.log('Attractions:', attractions);
-          console.log('Reactaurants:', restaurants);
+          console.log('Plan Response:', data);
+          setPlanData(data);
         } else {
           console.error('Failed to fetch Plan:', response.statusText);
         }
@@ -462,6 +483,90 @@ const Home = () => {
             <button onClick={handlePrevious} disabled={currentWeatherIndex === 0}>Previous</button>
             <button onClick={handleNext} disabled={currentWeatherIndex === Object.keys(weatherData).length - 1}>Next</button>
           </div>
+        </div>
+      )}
+
+{planData && (
+        <div className="plan-section">
+          <h2>Available Hotels, Restaurants and Attractions</h2>
+          
+          {/* Hotels Section */}
+          <h3>Hotels</h3>
+          <ul>
+            {planData.hotels.slice(0, showAllHotels ? planData.hotels.length : MAX_VISIBLE_ITEMS).map((hotel, index) => (
+              <li key={index}>
+                <label className="custom-input-container">
+                  <input
+                    type="radio"
+                    name="hotel"
+                    value={hotel.name}
+                    checked={selectedHotel === hotel.name}
+                    onChange={handleHotelChange}
+                  />
+                  <div className="custom-radio"></div>
+                  <span className="custom-input-label">{hotel.name} - {hotel.vicinity}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          {planData.hotels.length > MAX_VISIBLE_ITEMS && (
+            <button className="see-more-button" onClick={toggleHotels}>
+              {showAllHotels ? 'See Less' : 'See More'}
+            </button>
+          )}
+
+          {/* Restaurants Section */}
+          <h3>Restaurants</h3>
+          <ul>
+            {planData.restaurants.slice(0, showAllRestaurants ? planData.restaurants.length : MAX_VISIBLE_ITEMS).map((restaurant, index) => (
+              <li key={index}>
+                <label className="custom-input-container">
+                  <input
+                    type="checkbox"
+                    value={restaurant.name}
+                    checked={selectedRestaurants.includes(restaurant.name)}
+                    onChange={handleRestaurantChange}
+                  />
+                  <div className="custom-checkbox"></div>
+                  <span className="custom-input-label">{restaurant.name} - {restaurant.vicinity}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          {planData.restaurants.length > MAX_VISIBLE_ITEMS && (
+            <button className="see-more-button" onClick={toggleRestaurants}>
+              {showAllRestaurants ? 'See Less' : 'See More'}
+            </button>
+          )}
+
+          {/* Attractions Section */}
+          <h3>Attractions</h3>
+          <ul>
+            {planData.attractions.slice(0, showAllAttractions ? planData.attractions.length : MAX_VISIBLE_ITEMS).map((attraction, index) => (
+              <li key={index}>
+                <label className="custom-input-container">
+                  <input
+                    type="checkbox"
+                    value={attraction.name}
+                    checked={selectedAttractions.includes(attraction.name)}
+                    onChange={handleAttractionChange}
+                  />
+                  <div className="custom-checkbox"></div>
+                  <span className="custom-input-label">{attraction.name} - {attraction.vicinity}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          {planData.attractions.length > MAX_VISIBLE_ITEMS && (
+            <button className="see-more-button" onClick={toggleAttractions}>
+              {showAllAttractions ? 'See Less' : 'See More'}
+            </button>
+          )}
+          <br />
+          {/* Submit Button */}
+          <button className="submit-button" onClick={handleSubmitSelection}>
+            Submit Selections
+          </button>
         </div>
       )}
     </div>

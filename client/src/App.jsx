@@ -7,6 +7,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Navbar from './components/Navbar';
 import Gallery from './components/Gallery';
+import Blogs from './pages/Blogs';
+import TripAlbums from './pages/TripAlbums';
 
 
 function App() {
@@ -29,6 +31,14 @@ function App() {
             <Route
               path="/gallery/x"
               element={user ? <Gallery /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/gallery"
+              element={user ? <TripAlbums /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/blogs"
+              element={user ? <Blogs /> : <Navigate to="/" />}
             />
             <Route
               path="/signup"
