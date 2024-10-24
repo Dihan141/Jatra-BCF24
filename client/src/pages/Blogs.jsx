@@ -1,90 +1,88 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import './css/Blogs.css'; 
 
-const Blogs = () => {
-  // Dummy blogs data
-  const dummyBlogs = [
-    {
-      id: 1,
-      text: `# Exploring the Alps \n\nThe Alps are a stunning range of mountains, offering breathtaking views and exhilarating activities.`,
-      tripId: 'trip001',
-      userId: 'user001',
-      tripName: 'Trip to the Alps'
-    },
-    {
-      id: 2,
-      text: `# Adventure in the Sahara Desert \n\nDiscovering the vast desert landscape was a surreal experience. The golden dunes stretch endlessly.`,
-      tripId: 'trip002',
-      userId: 'user002',
-      tripName: 'Sahara Desert Adventure'
-    },
-    {
-      id: 3,
-      text: `# Journey through Tokyo \n\nTokyo is a vibrant city, full of life and culture. Every corner you turn has something unique to offer.`,
-      tripId: 'trip003',
-      userId: 'user003',
-      tripName: 'Tokyo City Exploration'
-    },
-    {
-      id: 4,
-      text: `# Camping in Yosemite \n\nYosemite National Park is a paradise for nature lovers. Camping here was a serene and unforgettable experience.`,
-      tripId: 'trip004',
-      userId: 'user004',
-      tripName: 'Yosemite Camping Trip'
-    },
-    {
-      id: 5,
-      text: `# Backpacking across Europe \n\nA backpacking journey through Europe offers incredible diversity in landscapes, cultures, and history.`,
-      tripId: 'trip005',
-      userId: 'user005',
-      tripName: 'Europe Backpacking Journey'
-    },
-    {
-      id: 6,
-      text: `# Exploring Australia \n\nThe vast wilderness and unique wildlife of Australia are a must-see for every adventurer.`,
-      tripId: 'trip006',
-      userId: 'user006',
-      tripName: 'Australia Adventure'
-    },
-    // More blogs...
-  ];
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
-  const blogsPerPage = 5;
+const Blogs = () => {
+  const [blogs, setBlogs] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeBlogId, setActiveBlogId] = useState(null);
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState(null); 
 
-  const handleBlogClick = (id) => {
-    setActiveBlogId((prevId) => (prevId === id ? null : id)); // Toggle visibility
+  const blogsPerPage = 5;
+
+  const fetchBlogs = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/api/blog/`, {
+        method: 'GET',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch blogs');
+      }
+
+      const data = await response.json();
+      console.log(data);
+
+      // Map through the blogs to format them correctly
+      const formattedBlogs = data.blogs.map(blog => ({
+        _id: blog._id,
+        tripName: blog.tripName,
+        // Extract and join text content from the nested array
+        text: blog.text.map(item => item.text).join(' '), // Join text items into a single string
+      }));
+
+      setBlogs(formattedBlogs); 
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false); 
+    }
   };
 
-  // Calculate the range of blogs to display on the current page
-  const startIndex = (currentPage - 1) * blogsPerPage;
-  const currentBlogs = dummyBlogs.slice(startIndex, startIndex + blogsPerPage);
-  const totalPages = Math.ceil(dummyBlogs.length / blogsPerPage);
+  useEffect(() => {
+    fetchBlogs();
+  }, []);
 
-  // Handle page change
+  const handleBlogClick = (_id) => {
+    setActiveBlogId((prevId) => (prevId === _id ? null : _id));
+  };
+
+  const startIndex = (currentPage - 1) * blogsPerPage;
+  const currentBlogs = blogs.slice(startIndex, startIndex + blogsPerPage);
+  const totalPages = Math.ceil(blogs.length / blogsPerPage);
+
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
     <div className="blogs-container">
       <h1>Blogs</h1>
       <ul className="blogs-list">
         {currentBlogs.map((blog) => (
-          <li key={blog.id} className="blog-item" onClick={() => handleBlogClick(blog.id)}>
+          <li key={blog._id} className="blog-item" onClick={() => handleBlogClick(blog._id)}>
             <h3>{blog.tripName}</h3>
-            {activeBlogId === blog.id && (
+            {activeBlogId === blog._id && (
               <div className="blog-content">
-                <ReactMarkdown>{blog.text}</ReactMarkdown> {/* Render markdown */}
+                <ReactMarkdown>{blog.text}</ReactMarkdown>
               </div>
             )}
           </li>
         ))}
       </ul>
 
-      {/* Pagination Controls */}
       <div className="pagination">
         <button
           onClick={() => handlePageChange(currentPage - 1)}
