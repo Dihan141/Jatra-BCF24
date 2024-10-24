@@ -32,7 +32,7 @@ const Navbar = () => {
             <div>
               <span>{user.email}</span>
               <Link to="/" onClick={handleHomeClick}>Home</Link>
-              <Link to="/gallery/x">Gallery</Link>
+              <Link to="/gallery">Albums</Link>
               <Link to="/blogs">Blogs</Link>
               <button onClick={handleClick}>Log out</button>
             </div>

@@ -29,7 +29,7 @@ function App() {
               element={!user ? <Login /> : <Navigate to="/" />}
             />
             <Route
-              path="/gallery/x"
+              path="/gallery/:id"
               element={user ? <Gallery /> : <Navigate to="/" />}
             />
             <Route
