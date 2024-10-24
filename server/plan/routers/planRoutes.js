@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-const { createPlan } = require('../controllers/planController');
+const { createPlan, selectPlan } = require('../controllers/planController');
+const protect = require('../../middlewares/authMiddleware');
 
-router.post('/', createPlan)
+router.post('/', protect, createPlan)
+router.post('/create', protect, selectPlan)
 
 module.exports = router;

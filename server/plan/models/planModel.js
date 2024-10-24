@@ -15,7 +15,7 @@ const planSchema = schema({
         type: Date,
         required: true
     },
-    preference: {
+    preferences: {
         type: String,
         required: true
     },
@@ -34,6 +34,10 @@ const planSchema = schema({
     restaurants: {
         type: Array,
         default: []
+    },
+    uid: {
+        type: schema.Types.ObjectId,
+        ref: 'User'
     }
 },{
     timeStamps: true
