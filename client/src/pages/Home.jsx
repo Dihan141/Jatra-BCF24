@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { GoogleMap, LoadScript, Marker, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
 import axios from 'axios';
 import './css/Home.css';
@@ -43,6 +45,7 @@ const Home = () => {
   const [showAllHotels, setShowAllHotels] = useState(false);
   const [showAllRestaurants, setShowAllRestaurants] = useState(false);
   const [showAllAttractions, setShowAllAttractions] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleHotels = () => setShowAllHotels(!showAllHotels);
   const toggleRestaurants = () => setShowAllRestaurants(!showAllRestaurants);
@@ -78,6 +81,8 @@ const Home = () => {
   };
 
   const handleSubmitSelection = async() => {
+    setIsSubmitting(true);  // Show loader
+
     const selectedData = {
       place: destination,
       from: startDate,
@@ -90,39 +95,42 @@ const Home = () => {
     };
     console.log('Selected Data:', selectedData);
 
-    const response = await fetch(`${backendUrl}/api/plan/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${user.token}`,
-      },
-      body: JSON.stringify(selectedData),
-    });
-
-    if(response.ok){
-      const data = await response.json();
-      console.log('Plan Response:', data);
-      console.log('Plan created successfully');
-      const blogResponse = await fetch(`${backendUrl}/api/blog/generate`, {
+    try {
+      const response = await fetch(`${backendUrl}/api/plan/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`,
         },
-        body: JSON.stringify({ plan: data.plan }),
+        body: JSON.stringify(selectedData),
       });
-      console.log('Blog Response:', blogResponse);
-    } else {
-      console.error('Failed to fetch:', response.statusText);
-    }
 
-    // Add API call or processing logic here to submit selected data
-    // Example: post to backend
-    // fetch(`${backendUrl}/api/submit-selection`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(selectedData)
-    // });
-  };
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Plan Response:', data);
+        console.log('Plan created successfully');
+
+        const blogResponse = await fetch(`${backendUrl}/api/blog/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ plan: data.plan }),
+        });
+        console.log('Blog Response:', blogResponse);
+        toast.success('Plan created successfully!');
+      } else {
+        console.error('Failed to fetch:', response.statusText);
+        toast.error('Failed to create plan. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('An error occurred. Please try again.');
+    } finally {
+      setIsSubmitting(false);  // Hide loader after submission
+    }
+};
+
 
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -572,9 +580,10 @@ const Home = () => {
           )}
           <br />
           {/* Submit Button */}
-          <button className="submit-button" onClick={handleSubmitSelection}>
-            Submit Selections
+          <button className="submit-button" onClick={handleSubmitSelection} disabled={isSubmitting}>
+            {isSubmitting ? <div className="spinner"></div> : 'Submit Selections'}
           </button>
+          <ToastContainer />
         </div>
       )}
     </div>
