@@ -15,6 +15,10 @@ const userSchema = schema({
         type: String,
         required: true
     },
+    photo :{
+        type: String,
+        default: ''
+    },
     verified: {
         type: Boolean,
         default: false
