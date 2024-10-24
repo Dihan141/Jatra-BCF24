@@ -120,6 +120,7 @@ const Home = () => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const totalSteps = organizedDirections.length;
 
+
   const handleNextStep = () => {
     if (currentStepIndex < totalSteps - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
@@ -137,6 +138,17 @@ const Home = () => {
     setTravelMode(mode);
   };
 
+  const handleHotelSelect = (hotel) => {
+    setSelectedHotel(hotel);
+  };
+
+  const handleRestaurantSelect = (restaurant) => {
+    setSelectedRestaurants((prevSelected) =>
+      prevSelected.includes(restaurant)
+        ? prevSelected.filter((r) => r !== restaurant)
+        : [...prevSelected, restaurant]
+    );
+  };
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -276,7 +288,7 @@ const Home = () => {
           console.log('Plan Response:', data);
           setPlanData(data);
         } else {
-          console.error('Failed to fetch:', response.statusText);
+          console.error('Failed to fetch Plan:', response.statusText);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -354,7 +366,7 @@ const Home = () => {
               type="date"
               value={startDate}
               onChange={handleStartDateChange}
-              min={getCurrentDate()}  
+              min={getCurrentDate()}
               required
             />
           </div>
@@ -365,7 +377,7 @@ const Home = () => {
               type="date"
               value={endDate}
               onChange={handleEndDateChange}
-              min={startDate || getCurrentDate()} 
+              min={startDate || getCurrentDate()}
               required
             />
           </div>
@@ -425,7 +437,7 @@ const Home = () => {
           <button onClick={handleNextStep} disabled={currentStepIndex === organizedDirections.length - 1}>Next</button>
         </div>
       )}
-
+      
 
       <div className="map-section">
         <h2> Map</h2>
@@ -453,6 +465,8 @@ const Home = () => {
           </GoogleMap>
         </LoadScript>
       </div>
+
+
 
       {Object.entries(weatherData).length > 0 && (
         <div className="weather-section">

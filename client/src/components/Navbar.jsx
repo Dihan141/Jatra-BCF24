@@ -13,8 +13,13 @@ const Navbar = () => {
   return (
     <header>
       <div className="container">
-        <Link to="/">
-          <h1>Jatra</h1>
+        <Link to="/" className="logo-link" style={{ display: 'flex', alignItems: 'center' }}>
+          <img
+            src="https://res.cloudinary.com/djbspykue/image/upload/v1729760463/gegagcimrehfbsjidftq.png"
+            alt="Jatra Logo"
+            style={{ width: '90px', height: '80px', marginRight: '10px' }} // Adjust size as needed
+          />
+          <h1 style={{ margin: 0 }}>Jatra</h1>
         </Link>
         <nav>
           {user && (

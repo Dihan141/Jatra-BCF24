@@ -35,7 +35,7 @@ export const useSignup = () => {
     const createdAt = new Date().toISOString()
     const updatedAt = new Date().toISOString()
 
-    let photoUrl = '../assets/avatar.png';
+    let photoUrl = 'https://res.cloudinary.com/djbspykue/image/upload/v1729760325/wqtvslqw3g8ovxdcluch.png';
     if (photo) {
       photoUrl = await uploadPhotoToCloudinary(photo);
       if (!photoUrl) {
