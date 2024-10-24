@@ -37,6 +37,7 @@ const Home = () => {
   const [organizedDirections, setOrganizedDirections] = useState([]);
   const [startLocation, setStartLocation] = useState('');
   const [travelMode, setTravelMode] = useState('TRANSIT');
+  const [places, setPlaces] = useState([]);
 
 
   const [hotels, setHotels] = useState([]);
@@ -218,6 +219,27 @@ const Home = () => {
 
         if (response.ok) {
           const data = await response.json();
+
+          setPlaces({
+            attractions: data.attractions.map(place => ({
+              name: place.name,
+              photos: place.photos,
+              vicinity: place.vicinity,
+              rating: place.rating,
+            })),
+            hotels: data.hotels.map(place => ({
+              name: place.name,
+              photos: place.photos,
+              vicinity: place.vicinity,
+              rating: place.rating,
+            })),
+            restaurants: data.restaurants.map(place => ({
+              name: place.name,
+              photos: place.photos,
+              vicinity: place.vicinity,
+              rating: place.rating,
+            })),
+          });
           // Set state for hotels, attractions, and restaurants separately
           setHotels(data.hotels.map(place => ({
             name: place.name,
@@ -240,6 +262,7 @@ const Home = () => {
             rating: place.rating,
           })));
 
+          console.log('Places: ', places);
           console.log('Hotels:', hotels);
           console.log('Attractions:', attractions);
           console.log('Reactaurants:', restaurants);
