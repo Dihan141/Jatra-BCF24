@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, DirectionsService, DirectionsRenderer } from '@react-google-maps/api';
 import axios from 'axios';
-import './css/Home.css'; 
+import './css/Home.css';
+import parse from 'html-react-parser';
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const OPEN_WEATHER_API_KEY = import.meta.env.VITE_OPEN_WEATHER_API_KEY;
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const mapContainerStyle = {
   width: '100%',
@@ -9,28 +14,29 @@ const mapContainerStyle = {
 };
 
 const defaultCenter = {
-  lat: 37.7749, // Default to San Francisco
+  lat: 37.7749,
   lng: -122.4194,
 };
 
-const OPEN_WEATHER_API_KEY = '8a5a67e9912204d1f552752d572c26a2';
 
 const Home = () => {
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [dateError, setDateError] = useState('');
   const [numTravelers, setNumTravelers] = useState(1);
   const [budgetCategory, setBudgetCategory] = useState('Mid Range');
   const [directionsResponse, setDirectionsResponse] = useState(null);
   const [userLocation, setUserLocation] = useState(defaultCenter);
   const [destinationCoordinates, setDestinationCoordinates] = useState(null);
-  const [weatherData, setWeatherData] = useState([]); 
+  const [weatherData, setWeatherData] = useState([]);
   const [mapZoom, setMapZoom] = useState(10);
   const [currentWeatherIndex, setCurrentWeatherIndex] = useState(0);
   const [totalDuration, setTotalDuration] = useState('');
   const [totalDistance, setTotalDistance] = useState('');
   const [organizedDirections, setOrganizedDirections] = useState([]);
   const [startLocation, setStartLocation] = useState('');
+  const [travelMode, setTravelMode] = useState('TRANSIT');
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const totalSteps = organizedDirections.length;
@@ -45,6 +51,46 @@ const Home = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
     }
+  };
+
+  const handleTravelModeChange = (event) => {
+    const mode = event.target.value;
+    setTravelMode(mode);
+  };
+
+
+  const getCurrentDate = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  };
+
+  const handleStartDateChange = (e) => {
+    const selectedStartDate = e.target.value;
+    const currentDate = getCurrentDate();
+
+    if (selectedStartDate < currentDate) {
+      setDateError('Start date cannot be before today.');
+    } else {
+      setDateError('');
+    }
+
+    setStartDate(selectedStartDate);
+
+    if (endDate && selectedStartDate >= endDate) {
+      setDateError('End date must be greater than start date.');
+    }
+  };
+
+  const handleEndDateChange = (e) => {
+    const selectedEndDate = e.target.value;
+
+    if (startDate && selectedEndDate <= startDate) {
+      setDateError('End date must be greater than start date.');
+    } else {
+      setDateError('');
+    }
+
+    setEndDate(selectedEndDate);
   };
 
   useEffect(() => {
@@ -66,7 +112,7 @@ const Home = () => {
   }, []);
 
   const geocodeDestination = async (destination) => {
-    const geocodingAPI = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(destination)}&key=AIzaSyBSkQu0V2fxnsxlw4SZ8vr5JIlO2ROBqBs`;
+    const geocodingAPI = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(destination)}&key=${GOOGLE_MAPS_API_KEY}`;
 
     try {
       const response = await axios.get(geocodingAPI);
@@ -95,7 +141,7 @@ const Home = () => {
         const forecastDate = new Date(forecast.dt * 1000).toLocaleDateString();
 
         if (!acc[forecastDate]) {
-          acc[forecastDate] = []; 
+          acc[forecastDate] = [];
         }
 
         acc[forecastDate].push({
@@ -107,7 +153,7 @@ const Home = () => {
         return acc;
       }, {});
 
-      return groupedWeather; 
+      return groupedWeather;
     } catch (error) {
       console.error('Error fetching weather data:', error);
       return {};
@@ -120,11 +166,41 @@ const Home = () => {
     const coordinates = await geocodeDestination(destination);
     if (coordinates) {
       setDestinationCoordinates(coordinates);
-      setDirectionsResponse(null); 
+      setDirectionsResponse(null);
 
       const weatherData = await fetchWeatherData(coordinates, startDate, endDate);
       setWeatherData(weatherData);
-      setCurrentWeatherIndex(0); 
+      setCurrentWeatherIndex(0);
+
+
+
+      const postData = {
+        place: destination,
+        from: startDate,
+        to: endDate,
+        peopleCount: numTravelers,
+      };
+
+      try {
+        const response = await fetch(`${backendUrl}/api/plan/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(postData),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Plan Response:', data);
+          setResponseData(data);
+        } else {
+          console.error('Failed to fetch:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+
 
       const directionsServiceResponse = await new Promise((resolve, reject) => {
         const directionsService = new window.google.maps.DirectionsService();
@@ -132,7 +208,7 @@ const Home = () => {
           {
             origin: userLocation,
             destination: coordinates,
-            travelMode: 'TRANSIT',
+            travelMode: travelMode,
           },
           (result, status) => {
             if (status === 'OK') {
@@ -143,7 +219,7 @@ const Home = () => {
               setOrganizedDirections(route.legs[0].steps.map(step => ({
                 distance: step.distance.text,
                 duration: step.duration.text,
-                instruction: step.instructions,
+                instruction: parse(step.instructions),
               })));
               resolve(result);
             } else {
@@ -154,11 +230,11 @@ const Home = () => {
         );
       });
 
-      console.log('Total Duration:', totalDuration);
-      console.log('Total Distance:', totalDistance);
-      console.log('Start Location:', startLocation);
-      console.log('Organized Directions:', organizedDirections);
-      console.log("Destination: ", destination);
+      // console.log('Total Duration:', totalDuration);
+      // console.log('Total Distance:', totalDistance);
+      // console.log('Start Location:', startLocation);
+      // console.log('Organized Directions:', organizedDirections);
+      // console.log("Destination: ", destination);
 
       setDirectionsResponse(directionsServiceResponse);
     }
@@ -196,7 +272,8 @@ const Home = () => {
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={handleStartDateChange}
+              min={getCurrentDate()}  
               required
             />
           </div>
@@ -206,9 +283,18 @@ const Home = () => {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={handleEndDateChange}
+              min={startDate || getCurrentDate()} 
               required
             />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="travel-mode">Select Travel Mode:</label>
+            <select id="travel-mode" value={travelMode} onChange={handleTravelModeChange}>
+              <option value="DRIVING">Private Car</option>
+              <option value="TRANSIT">Public Transport</option>
+            </select>
           </div>
 
           <div className="form-group">
@@ -247,7 +333,7 @@ const Home = () => {
 
       {organizedDirections.length > 0 && (
         <div style={{ marginTop: '20px' }}>
-          <h3>Directions:</h3>
+          <h3>Travel Directions:</h3>
           <div style={{ border: '1px solid #ccc', padding: '10px', margin: '10px 0' }}>
             <p><strong>Step {currentStepIndex + 1} of {organizedDirections.length}</strong></p>
             <p><strong>Distance:</strong> {organizedDirections[currentStepIndex].distance}</p>
@@ -261,12 +347,12 @@ const Home = () => {
 
 
       <div className="map-section">
-        <h2>Itinerary Map</h2>
-        <LoadScript googleMapsApiKey="AIzaSyBSkQu0V2fxnsxlw4SZ8vr5JIlO2ROBqBs">
+        <h2> Map</h2>
+        <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} >
           <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={userLocation}
-            zoom={mapZoom} 
+            zoom={mapZoom}
           >
             <Marker
               position={userLocation}
