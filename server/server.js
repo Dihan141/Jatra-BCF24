@@ -8,6 +8,7 @@ const app = express();
 //routes
 const authroutes = require('./user/routers/authRoutes');
 const productroutes = require('./product/routers/productRoutes');
+const planRoutes = require('./plan/routers/planRoutes');
 
 app.use(cors({
     origin: '*'
@@ -27,6 +28,7 @@ mongoose.connect(process.env.MONGO_URI).then(()=>{
 
 app.use('/api/users', authroutes);
 app.use('/api/products', productroutes);
+app.use('/api/plan', planRoutes);
 
 app.listen(process.env.PORT, ()=>{
     console.log(`Server is running on port ${process.env.PORT}`);
