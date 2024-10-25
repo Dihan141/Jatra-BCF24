@@ -1,20 +1,50 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './css/Gallery.css';
+import { useParams } from 'react-router-dom';
+import { useAuthContext } from '../hooks/useAuthContext';
 
-// Dummy image URLs for testing
-const dummyImageUrls = [
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQc1HLR7XVsYWwIrwmDPLtM0U9QCd6mC8kT4A&s',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTR-_D2E6_evsKBJ-HcomKxekkuuMuJlZbUWQ&s',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRLH6Diu5FFs84dKFx_X0FFm53peAPA8ob1SQ&s',
-    'https://images.pexels.com/photos/2480072/pexels-photo-2480072.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500',
-    'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSpfpjSsR5A-zVGmK7Gcgy8O4BXMxbVQWaWSQ&s',
-];
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const Gallery = () => {
+    const { user } = useAuthContext();
     const [searchTerm, setSearchTerm] = useState('');
-    const [images, setImages] = useState(dummyImageUrls); 
+    const [images, setImages] = useState([]); // Initialize as empty array
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const { id } = useParams();
+
+    const fetchTrips = async () => {
+        try {
+            const response = await fetch(`${backendUrl}/api/album/${id}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`, // Ensure user.token is defined
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch trips');
+            }
+
+            const data = await response.json();
+            console.log(data);
+
+            // Check if albums array is not empty
+            if (data.albums && data.albums.length > 0) {
+                // Extract photos from the first album
+                setImages(data.albums[0].photos || []); // Set to an empty array if no photos found
+            } else {
+                setImages([]); // Set to an empty array if no albums
+            }
+        } catch (err) {
+            console.error(err);
+            setError('Failed to fetch photos.'); // Update error state
+        }
+    };
+
+    useEffect(() => {
+        fetchTrips(); // Fetch photos on component mount
+    }, [id]); // Depend on id to refetch when id changes
 
     const handleSearchChange = (event) => {
         setSearchTerm(event.target.value);
@@ -28,19 +58,33 @@ const Gallery = () => {
         setError('');
 
         try {
-            const response = await fetch(`YOUR_BACKEND_URL/search?query=${encodeURIComponent(searchTerm)}`);
-            const data = await response.json();
+            console.log(id);
+            console.log(searchTerm);
+            const response = await fetch(`http://localhost:8000/search-images?query=${searchTerm}&tenant_id=${id}`, {
+                method: 'POST',
+                headers: {
+                    'accept': 'application/json',
+                }
+            });
+            const data1 = await response.json();
+            console.log(data1);
+            const extractedImages = data1.matches.map(match => match.id);
+            setImages(extractedImages);
 
-            if (response.ok) {
-                setImages(data.imageUrls); // Assuming your backend returns an array of image URLs in 'imageUrls'
-            } else {
+            if (!response.ok) {
+                const data = await response.json();
                 throw new Error(data.message || 'Failed to fetch images.');
             }
+
+            const data = await response.json(); // Only parse if response is OK
+            console.log(data);
+
+            setImages(data.imageUrls); // Assuming data.imageUrls is an array of URLs
         } catch (error) {
             console.error('Fetch error:', error);
-            setError('Failed to fetch images. Please try again.'); 
+            setError('Failed to fetch images. Please try again.');
         } finally {
-            setLoading(false);
+            setLoading(false); // Always executed after try/catch
         }
     };
 
