@@ -10,6 +10,7 @@ const authroutes = require('./user/routers/authRoutes');
 const productroutes = require('./product/routers/productRoutes');
 const planRoutes = require('./plan/routers/planRoutes');
 const blogRoutes = require('./blog/routes/blogRoutes');
+const albumRoutes = require('./album/routes/albumRoute');
 
 app.use(cors({
     origin: '*'
@@ -31,6 +32,7 @@ app.use('/api/users', authroutes);
 app.use('/api/products', productroutes);
 app.use('/api/plan', planRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/album', albumRoutes);
 
 app.listen(process.env.PORT, ()=>{
     console.log(`Server is running on port ${process.env.PORT}`);

@@ -189,6 +189,16 @@ const getAllPlans = async (req, res) => {
     }
 }
 
+const getPlansByUid = async (req, res) => {
+    try {
+        const uid = req.userId;
+        const plans = await Plan.find({ uid });
+        res.status(200).json({ plans });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
+
 const generateTripTitle = (place) => {
     const templates = [
       `Trip to ${place}`,
@@ -211,4 +221,5 @@ module.exports = {
     createPlan,
     selectPlan,
     getAllPlans,
+    getPlansByUid,
 }
