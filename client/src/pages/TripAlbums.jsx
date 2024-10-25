@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuthContext } from '../hooks/useAuthContext';
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const TripAlbums = () => {
+const { user } = useAuthContext();
+
   const tripAlbumsInitial = [
     {
       tripId: 'trip001',
@@ -21,9 +26,12 @@ const TripAlbums = () => {
     // Add more albums as needed...
   ];
 
+  
+
   const [tripAlbums, setTripAlbums] = useState(tripAlbumsInitial);
   const [currentPage, setCurrentPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false); // Loader state
+  const [selectedFiles, setSelectedFiles] = useState({}); // Store selected files per trip
   const albumsPerPage = 2; // Set the number of albums per page
   const navigate = useNavigate();
 
@@ -32,35 +40,78 @@ const TripAlbums = () => {
   const indexOfFirstAlbum = indexOfLastAlbum - albumsPerPage;
   const currentAlbums = tripAlbums.slice(indexOfFirstAlbum, indexOfLastAlbum);
 
+  const fetchTrips = async () => {
+    console.log(user);
+    try {
+      const response = await fetch(`${backendUrl}/api/plan/get`, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          'Authorization': `Bearer ${user.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch trips');
+      }
+
+      const data = await response.json();
+      console.log(data);
+
+      setTripAlbums(data); 
+      
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTrips();
+  }, []);
+
   // Cloudinary Upload Function for Multiple Photos
   const uploadPhotosToCloudinary = async (photos) => {
-    const uploadPromises = photos.map(async (photo) => {
+    const imageUrlArray = [];
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
       const formData = new FormData();
       formData.append('file', photo);
       formData.append('upload_preset', 'datanalytica'); // Set your preset
 
       const cloudinaryUrl = import.meta.env.VITE_CLOUDINARY_URL;
 
-      const response = await fetch(cloudinaryUrl, {
-        method: 'POST',
-        body: formData,
-      });
+      try {
+        const response = await fetch(cloudinaryUrl, {
+          method: 'POST',
+          body: formData,
+        });
 
-      const json = await response.json();
-      return json.secure_url; // Return the Cloudinary URL
-    });
+        const json = await response.json();
+        imageUrlArray.push(json.secure_url); // Store each image URL
+      } catch (error) {
+        console.error(`Error uploading image ${photo.name}:`, error);
+      }
+    }
 
-    return Promise.all(uploadPromises); // Wait for all uploads to complete
+    return imageUrlArray; // Return array of uploaded image URLs
   };
 
-  // Handle multiple file uploads
-  const handleImageUpload = async (tripId, event) => {
+  // Handle file selection
+  const handleFileSelect = (tripId, event) => {
     const files = Array.from(event.target.files);
-    if (!files.length) return;
+    setSelectedFiles((prevFiles) => ({
+      ...prevFiles,
+      [tripId]: files, // Store selected files for each tripId
+    }));
+  };
+
+  // Handle image upload on button click and call backend API
+  const handleImageUpload = async (tripId) => {
+    if (!selectedFiles[tripId] || !selectedFiles[tripId].length) return;
 
     setIsUploading(true); // Show loader
     try {
-      const uploadedImageUrls = await uploadPhotosToCloudinary(files); // Upload all files
+      const uploadedImageUrls = await uploadPhotosToCloudinary(selectedFiles[tripId]); // Upload selected files
 
       // Update the state with the newly uploaded images
       const updatedAlbums = tripAlbums.map((album) => {
@@ -74,8 +125,23 @@ const TripAlbums = () => {
       });
 
       setTripAlbums(updatedAlbums); // Update state with new albums and images
+      setSelectedFiles((prevFiles) => ({
+        ...prevFiles,
+        [tripId]: [], // Clear selected files after upload
+      }));
+
+      // console.log(JSON.stringify({ images: uploadedImageUrls }));
+      // Call backend API with tripId and uploaded images
+      await fetch(`${backendUrl}/api/trip/${tripId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ photos: uploadedImageUrls }), // Send uploaded image URLs to backend
+      });
+
     } catch (error) {
-      console.error("Error uploading images:", error);
+      console.error('Error uploading images:', error);
     } finally {
       setIsUploading(false); // Hide loader
     }
@@ -117,10 +183,20 @@ const TripAlbums = () => {
               <input
                 type="file"
                 multiple
-                onChange={(e) => handleImageUpload(album.tripId, e)}
+                onChange={(e) => handleFileSelect(album.tripId, e)} // Pass tripId for each album
                 style={{ marginBottom: '10px' }}
               />
-              <button onClick={() => handleViewGallery(album.tripId, album.images)}>
+              <button
+                key={`upload-${album.tripId}`} // Unique key for each upload button
+                onClick={() => handleImageUpload(album.tripId)} // Pass tripId for each album
+                disabled={!selectedFiles[album.tripId] || !selectedFiles[album.tripId].length}
+              >
+                Upload Images
+              </button>
+              <button
+                key={`view-${album.tripId}`} // Unique key for each view gallery button
+                onClick={() => handleViewGallery(album.tripId, album.images)}
+              >
                 View Gallery
               </button>
             </div>
