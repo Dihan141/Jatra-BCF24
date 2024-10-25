@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import uuid
 import requests  # For making HTTP requests to Gemini API
 from pinecone import Pinecone, ServerlessSpec
+from fastapi.middleware.cors import CORSMiddleware
 
 
 # Load environment variables
@@ -47,7 +48,17 @@ pc = Pinecone(api_key=PINECONE_API_KEY)
 
 # Create the FastAPI app
 app = FastAPI()
+origins = [
+    "http://localhost:5173",
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Define the request model
 class UploadImagesRequest(BaseModel):
     images: List[str]  # List of image links
@@ -124,7 +135,7 @@ async def upload_images(request: UploadImagesRequest, tenant_id: str):
         image_id = image_url
 
         # Store the metadata and embedding in Pinecone
-        index.upsert(vectors=[(image_id, embedding)], metadata={"caption": caption, **request.metadata})
+        index.upsert(vectors=[(image_id, embedding)], namespace=tenant_id, metadata={"caption": caption, **request.metadata})
 
         embeddings.append({
             "image_id": image_id,
@@ -143,7 +154,7 @@ async def search_images(tenant_id: str, query: str):
     query_embedding = generate_text_embedding(query)
 
     # Search for similar images in Pinecone
-    result = index.query(vector=query_embedding, top_k=5, include_metadata=True)
+    result = index.query(namespace=tenant_id, vector=query_embedding, top_k=5, include_metadata=True)
 
     # Ensure the matches are JSON serializable
     matches = [

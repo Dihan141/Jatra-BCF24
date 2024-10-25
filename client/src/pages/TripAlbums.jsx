@@ -1,54 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthContext } from '../hooks/useAuthContext';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
 const TripAlbums = () => {
-  // const { user } = useAuthContext();
   const user = JSON.parse(localStorage.getItem('user'));
-  // console.log(user.token);
 
-  const tripAlbumsInitial = [
-    {
-      tripId: 'trip001',
-      tripName: 'Trip to the Alps',
-      images: [],
-    },
-    {
-      tripId: 'trip002',
-      tripName: 'Sahara Desert Adventure',
-      images: [],
-    },
-    {
-      tripId: 'trip003',
-      tripName: 'Tokyo City Exploration',
-      images: [],
-    },
-    {
-      tripId: 'trip004',
-      tripName: 'Road Trip through Italy',
-      images: [],
-    },
-    {
-      tripId: 'trip005',
-      tripName: 'Beach Vacation in Hawaii',
-      images: [],
-    },
-    // Add more albums as needed...
-  ];
-
-  const [tripAlbums, setTripAlbums] = useState(tripAlbumsInitial);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [tripAlbums, setTripAlbums] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState({});
-  const albumsPerPage = 3; // Set the number of albums per page
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(3); // Items per page
   const navigate = useNavigate();
-
-  // Pagination logic
-  const indexOfLastAlbum = currentPage * albumsPerPage;
-  const indexOfFirstAlbum = indexOfLastAlbum - albumsPerPage;
-  const currentAlbums = tripAlbums.slice(indexOfFirstAlbum, indexOfLastAlbum);
 
   const fetchTrips = async () => {
     try {
@@ -64,8 +27,7 @@ const TripAlbums = () => {
       }
 
       const data = await response.json();
-      console.log(data.plans);
-      setTripAlbums(data.plans); 
+      setTripAlbums(data.plans);
     } catch (err) {
       console.error(err);
     }
@@ -116,31 +78,37 @@ const TripAlbums = () => {
     try {
       const uploadedImageUrls = await uploadPhotosToCloudinary(selectedFiles[tripId]);
 
-      const updatedAlbums = tripAlbums.map((album) => {
-        if (album.tripId === tripId) {
-          return {
-            ...album,
-            images: [...album.images, ...uploadedImageUrls],
-          };
-        }
-        return album;
-      });
-
-      setTripAlbums(updatedAlbums);
       setSelectedFiles((prevFiles) => ({
         ...prevFiles,
         [tripId]: [],
       }));
-      
-      console.log(uploadedImageUrls)
 
-      // await fetch(`${backendUrl}/api/trip/${tripId}/`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ photos: uploadedImageUrls }),
-      // });
+      // Uncomment if you want to post the uploaded images to the backend
+      await fetch(`${backendUrl}/api/album/update/${tripId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`,
+        },
+        body: JSON.stringify({ photos: uploadedImageUrls }),
+      });
+
+      await fetch(`http://localhost:8000/upload-images/?tenant_id=${tripId}`, {
+        method: 'POST',
+        headers: {
+            'accept': 'application/json',
+            'Content-Type': 'application/json', // Corrected this line
+        },
+        body: JSON.stringify({
+            images: uploadedImageUrls, // Ensure this is an array of image URLs
+            metadata: {
+                additionalProp1: "string",
+                additionalProp2: "string",
+                additionalProp3: "string"
+            }
+        }),
+    });
+
 
     } catch (error) {
       console.error('Error uploading images:', error);
@@ -153,16 +121,16 @@ const TripAlbums = () => {
     navigate(`/gallery/${tripId}`, { state: { images } });
   };
 
-  const handleNextPage = () => {
-    if (currentPage < Math.ceil(tripAlbums.length / albumsPerPage)) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
+  // Pagination Logic
+  const totalPages = Math.ceil(tripAlbums.length / itemsPerPage);
+  const currentItems = tripAlbums.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+  const handlePageChange = (direction) => {
+    setCurrentPage((prevPage) => {
+      if (direction === 'next' && prevPage < totalPages) return prevPage + 1;
+      if (direction === 'prev' && prevPage > 1) return prevPage - 1;
+      return prevPage;
+    });
   };
 
   return (
@@ -172,8 +140,8 @@ const TripAlbums = () => {
       {isUploading && <div>Uploading photos, please wait...</div>}
 
       <ul className="trip-albums-grid">
-        {currentAlbums.map((album) => (
-          <li key={album.tripId} className="album-item">
+        {currentItems.map((album) => (
+          <li key={album._id} className="album-item">
             <div className="album-thumbnail">
               <h3>{album.title}</h3>
             </div>
@@ -182,19 +150,19 @@ const TripAlbums = () => {
               <input
                 type="file"
                 multiple
-                onChange={(e) => handleFileSelect(album.tripId, e)}
+                onChange={(e) => handleFileSelect(album._id, e)}
                 style={{ marginBottom: '10px' }}
               />
               <button
-                key={`upload-${album.tripId}`}
-                onClick={() => handleImageUpload(album.tripId)}
-                disabled={!selectedFiles[album.tripId] || !selectedFiles[album.tripId].length}
+                key={`upload-${album._id}`}
+                onClick={() => handleImageUpload(album._id)}
+                disabled={!selectedFiles[album._id] || !selectedFiles[album._id].length}
               >
                 Upload Images
               </button>
               <button
-                key={`view-${album.tripId}`}
-                onClick={() => handleViewGallery(album.tripId, album.images)}
+                key={`view-${album._id}`}
+                onClick={() => handleViewGallery(album._id)}
               >
                 View Gallery
               </button>
@@ -203,15 +171,12 @@ const TripAlbums = () => {
         ))}
       </ul>
 
-      <div className="pagination-controls" style={{ textAlign: 'center', marginTop: '20px' }}>
-        <button onClick={handlePreviousPage} disabled={currentPage === 1}>
+      <div className="pagination">
+        <button onClick={() => handlePageChange('prev')} disabled={currentPage === 1}>
           Previous
         </button>
-        <span>Page {currentPage}</span>
-        <button
-          onClick={handleNextPage}
-          disabled={currentPage === Math.ceil(tripAlbums.length / albumsPerPage)}
-        >
+        <span>Page {currentPage} of {totalPages}</span>
+        <button onClick={() => handlePageChange('next')} disabled={currentPage === totalPages}>
           Next
         </button>
       </div>
