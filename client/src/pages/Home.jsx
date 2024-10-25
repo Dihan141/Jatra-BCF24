@@ -5,7 +5,7 @@ import { GoogleMap, LoadScript, Marker, DirectionsService, DirectionsRenderer } 
 import axios from 'axios';
 import './css/Home.css';
 import parse from 'html-react-parser';
-import {useAuthContext} from '../hooks/useAuthContext';
+import { useAuthContext } from '../hooks/useAuthContext';
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL;
 const OPEN_WEATHER_API_KEY = import.meta.env.VITE_OPEN_WEATHER_API_KEY;
@@ -23,7 +23,7 @@ const defaultCenter = {
 
 
 const Home = () => {
-  const {user} = useAuthContext();
+  const { user } = useAuthContext();
   const [destination, setDestination] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -40,12 +40,13 @@ const Home = () => {
   const [totalDistance, setTotalDistance] = useState('');
   const [organizedDirections, setOrganizedDirections] = useState([]);
   const [startLocation, setStartLocation] = useState('');
-  const [travelMode, setTravelMode] = useState('TRANSIT');
+  const [travelMode, setTravelMode] = useState('DRIVING');
   const [planData, setPlanData] = useState(null);
   const [showAllHotels, setShowAllHotels] = useState(false);
   const [showAllRestaurants, setShowAllRestaurants] = useState(false);
   const [showAllAttractions, setShowAllAttractions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startAddress, setStartAddress] = useState('');
 
   const toggleHotels = () => setShowAllHotels(!showAllHotels);
   const toggleRestaurants = () => setShowAllRestaurants(!showAllRestaurants);
@@ -80,7 +81,37 @@ const Home = () => {
     );
   };
 
-  const handleSubmitSelection = async() => {
+  const updateUserLocation = async () => {
+    if (startAddress) {
+      const location = await geocodeDestination(startAddress);
+      if (location) {
+        setUserLocation(location);
+      }
+    }
+    else {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const newLocation = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            setUserLocation(newLocation);
+            setMapZoom(15);
+          },
+          () => {
+            console.log("Error getting user's location.");
+          }
+        );
+      }
+    }
+  };
+
+  useEffect(() => {
+    updateUserLocation();
+  }, [startAddress]);
+
+  const handleSubmitSelection = async () => {
     setIsSubmitting(true);  // Show loader
 
     const selectedData = {
@@ -129,7 +160,7 @@ const Home = () => {
     } finally {
       setIsSubmitting(false);  // Hide loader after submission
     }
-};
+  };
 
 
 
@@ -376,6 +407,17 @@ const Home = () => {
             />
           </div>
 
+
+          <div className="form-group">
+            <label>Start Location (Optional)</label>
+            <input
+              type="text"
+              value={startAddress}
+              onChange={(e) => setStartAddress(e.target.value)}
+              placeholder="Optional"
+            />
+          </div>
+
           <div className="form-group">
             <label>Start Date</label>
             <input
@@ -453,7 +495,7 @@ const Home = () => {
           <button onClick={handleNextStep} disabled={currentStepIndex === organizedDirections.length - 1}>Next</button>
         </div>
       )}
-      
+
 
       <div className="map-section">
         <h2> Map</h2>
@@ -502,10 +544,10 @@ const Home = () => {
         </div>
       )}
 
-{planData && (
+      {planData && (
         <div className="plan-section">
           <h2>Available Hotels, Restaurants and Attractions</h2>
-          
+
           {/* Hotels Section */}
           <h3>Hotels</h3>
           <ul>
